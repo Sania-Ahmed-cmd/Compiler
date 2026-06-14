@@ -7,38 +7,56 @@
 
 using namespace std;
 
-// ---------------- Token ----------------
 struct Token {
     string type;
     string value;
 };
 
-// ---------------- Tokenizer ----------------
-vector<Token> tokenize(string code) {
+vector<Token> tokenize(const string& code) {
     vector<Token> tokens;
     int i = 0;
 
     while (i < code.length()) {
 
-        // Skip whitespace
+        if (code[i] == '\n') {
+            tokens.push_back({"NEWLINE", "\\n"});
+            i++;
+            continue;
+        }
+
         if (isspace(code[i])) {
             i++;
             continue;
         }
 
-        // Skip comments
-        if (code[i] == '/' && i + 1 < code.length() && code[i + 1] == '/') {
+        if (code[i] == '/' &&
+            i + 1 < code.length() &&
+            code[i + 1] == '/') {
+
             while (i < code.length() && code[i] != '\n')
                 i++;
+
             continue;
         }
 
-        // Numbers
-        if (isdigit(code[i])) {
+        if (isdigit(code[i]) || code[i] == '.') {
+
             string num;
+            bool decimalFound = false;
 
             while (i < code.length() &&
-                  (isdigit(code[i]) || code[i] == '.')) {
+                   (isdigit(code[i]) || code[i] == '.')) {
+
+                if (code[i] == '.') {
+
+                    if (decimalFound) {
+                        cout << "Invalid number format\n";
+                        exit(1);
+                    }
+
+                    decimalFound = true;
+                }
+
                 num += code[i];
                 i++;
             }
@@ -46,25 +64,27 @@ vector<Token> tokenize(string code) {
             tokens.push_back({"NUMBER", num});
         }
 
-        // Keywords / Identifiers
-        else if (isalpha(code[i])) {
+        else if (isalpha(code[i]) || code[i] == '_') {
+
             string word;
 
             while (i < code.length() &&
                   (isalnum(code[i]) || code[i] == '_')) {
+
                 word += code[i];
                 i++;
             }
 
             if (word == "let")
                 tokens.push_back({"LET", word});
+
             else if (word == "show")
                 tokens.push_back({"SHOW", word});
+
             else
                 tokens.push_back({"IDENTIFIER", word});
         }
 
-        // Operators
         else {
 
             char ch = code[i];
@@ -96,7 +116,6 @@ vector<Token> tokenize(string code) {
     return tokens;
 }
 
-// ---------------- Expression Evaluator ----------------
 double evaluate(vector<string> expr,
                 map<string, double>& vars) {
 
@@ -111,7 +130,7 @@ double evaluate(vector<string> expr,
     }
 
     if (processed.empty()) {
-        cout << "Empty expression!" << endl;
+        cout << "Empty expression\n";
         exit(1);
     }
 
@@ -120,6 +139,12 @@ double evaluate(vector<string> expr,
     for (int i = 1; i < processed.size(); i += 2) {
 
         string op = processed[i];
+
+        if (i + 1 >= processed.size()) {
+            cout << "Invalid expression\n";
+            exit(1);
+        }
+
         double val = stod(processed[i + 1]);
 
         if (op == "+")
@@ -134,7 +159,7 @@ double evaluate(vector<string> expr,
         else if (op == "/") {
 
             if (val == 0) {
-                cout << "Division by zero error!" << endl;
+                cout << "Division by zero\n";
                 exit(1);
             }
 
@@ -145,13 +170,12 @@ double evaluate(vector<string> expr,
     return result;
 }
 
-// ---------------- Main ----------------
 int main() {
 
     ifstream file("program.vortex");
 
     if (!file.is_open()) {
-        cout << "Could not open program.vortex" << endl;
+        cout << "Could not open program.vortex\n";
         return 1;
     }
 
@@ -164,45 +188,55 @@ int main() {
 
     map<string, double> variables;
 
-    for (int i = 0; i < tokens.size(); i++) {
+    int i = 0;
 
-        // let x = 10
+    while (i < tokens.size()) {
+
+        if (tokens[i].type == "NEWLINE") {
+            i++;
+            continue;
+        }
+
         if (tokens[i].type == "LET") {
 
             if (i + 3 >= tokens.size()) {
-                cout << "Invalid variable declaration" << endl;
+                cout << "Invalid declaration\n";
                 return 1;
             }
 
-            string var = tokens[i + 1].value;
+            string varName = tokens[i + 1].value;
+
+            if (tokens[i + 2].type != "EQUALS") {
+                cout << "Expected '='\n";
+                return 1;
+            }
+
             double value = stod(tokens[i + 3].value);
 
-            variables[var] = value;
+            variables[varName] = value;
 
-            i += 3;
+            i += 4;
         }
 
-        // show expression
         else if (tokens[i].type == "SHOW") {
 
             vector<string> expr;
-
             i++;
 
-            while (
-                i < tokens.size() &&
-                tokens[i].type != "LET" &&
-                tokens[i].type != "SHOW"
-            ) {
+            while (i < tokens.size() &&
+                   tokens[i].type != "NEWLINE") {
+
                 expr.push_back(tokens[i].value);
                 i++;
             }
 
-            i--;
+            cout << "Output: "
+                 << evaluate(expr, variables)
+                 << endl;
+        }
 
-            double result = evaluate(expr, variables);
-
-            cout << "Output: " << result << endl;
+        else {
+            i++;
         }
     }
 
