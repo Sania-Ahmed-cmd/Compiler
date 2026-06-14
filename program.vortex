@@ -1,10 +1,3 @@
-//for variable declaration use: 'let' function
-//for addition/substraction/division/multiplication= '+','-','/','*'
-//for printing the output='show'
-
-//example code: 
-
-let x = 25
-let y = 103
-let z=33
-show x + y -z
+let x=20
+let y=5
+ show x/y
